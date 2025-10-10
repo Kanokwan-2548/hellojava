@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Safe</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .safe-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 320px;
+        }
+        h1 {
+            color: #1c1e21;
+            margin-bottom: 24px;
+        }
+        .info {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 12px;
+        }
+        .balance {
+            font-size: 28px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 24px;
+        }
+        input[type="number"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .success-message {
+            color: #28a745;
+            margin-top: 16px;
+            font-weight: bold;
+            height: 20px; /* Reserve space */
+        }
+    </style>
+</head>
+<body>
+
+<div class="safe-container">
+    <h1>Digital Safe</h1>
+    <div class="info">Owner: <strong id="owner-name"></strong></div>
+    <div class="info">Balance:</div>
+    <div class="balance" id="balance-amount"></div>
+
+    <form id="deposit-form">
+        <input type="number" id="deposit-amount" placeholder="Enter amount to deposit" required min="1">
+        <button type="submit">Deposit</button>
+    </form>
+    <div class="success-message" id="success-message"></div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const ownerNameEl = document.getElementById("owner-name");
+        const balanceAmountEl = document.getElementById("balance-amount");
+        const depositForm = document.getElementById("deposit-form");
+        const depositAmountInput = document.getElementById("deposit-amount");
+        const successMessageEl = document.getElementById("success-message");
+
+        const API_BASE_URL = '''http://localhost:8081/safe''';
+        let successMessageTimeout;
+
+        // Function to fetch and display data
+        async function fetchData() {
+            try {
+                // Fetch owner
+                const ownerResponse = await fetch(`${API_BASE_URL}/owner`);
+                const owner = await ownerResponse.text();
+                ownerNameEl.textContent = owner;
+
+                // Fetch balance
+                const balanceResponse = await fetch(`${API_BASE_URL}/balance`);
+                const balance = await balanceResponse.json();
+                balanceAmountEl.textContent = formatCurrency(balance);
+            } catch (error) {
+                console.error("Failed to fetch initial data:", error);
+                ownerNameEl.textContent = "Error";
+                balanceAmountEl.textContent = "Error";
+            }
+        }
+
+        // Function to handle deposit
+        depositForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const amount = depositAmountInput.value;
+            if (!amount) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/deposit?amount=${amount}`, {
+                    method: "POST"
+                });
+                const newBalance = await response.json();
+                balanceAmountEl.textContent = formatCurrency(newBalance);
+                
+                // Show success message
+                showSuccessMessage(formatCurrency(amount));
+
+                depositAmountInput.value = ""; // Clear input
+            } catch (error) {
+                console.error("Failed to deposit:", error);
+                alert("Deposit failed. Please try again.");
+            }
+        });
+
+        function showSuccessMessage(formattedAmount) {
+            successMessageEl.textContent = `Successfully deposited ${formattedAmount}!`;
+            
+            // Clear previous timeout if it exists
+            if (successMessageTimeout) {
+                clearTimeout(successMessageTimeout);
+            }
+
+            // Set new timeout to clear the message after 3 seconds
+            successMessageTimeout = setTimeout(() => {
+                successMessageEl.textContent = "";
+            }, 3000);
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        // Initial data fetch
+        fetchData();
+    });
+</script>
+
+</body>
+</html>
